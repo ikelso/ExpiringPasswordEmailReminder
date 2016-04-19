@@ -11,13 +11,20 @@
 #
 ##################################################################################################################
 # Please Configure the following variables....
-$smtpServer="aus-dc-exch-01.usacompression.local"
-$from = "IT Support itsupport@usacompression.com"
+$smtpServer="server.fqdn.com"
+$from = "FromEmail@fqdn.com"
 $logging = "Enabled" # Set to Disabled to Disable Logging
 $logFile = "C:\logs\ExpiredPasswords.log" # ie. c:\mylog.csv
 $testing = "Disabled" # Set to Disabled to Email Users
-$testRecipient = "ikelso@usacompression.com"
+$testRecipient = "testrecipient@fqdn.com"
 $date = Get-Date -format ddMMyyyy
+
+### The following variables are used in the html formatted email to end users
+$ServiceDeskPhoneNumber =  "(555) 555-5555"
+$ServiceDeskExtension = "5555"
+$ServiceDeskEmail = "servicedesk@fqdn.com"
+$CompanyName = "Non-Descript MSP"
+$DepartmentName = "Information Technology"
 #
 ###################################################################################################################
 
@@ -38,7 +45,7 @@ if (($logging) -eq "Enabled")
 
 # Get Users From AD who are Enabled, Passwords Expire and are Not Currently Expired
 Import-Module ActiveDirectory
-$users = get-aduser -filter * -properties Name, PasswordNeverExpires, PasswordExpired, PasswordLastSet, EmailAddress |where {$_.Enabled -eq "True"} | where { $_.PasswordNeverExpires -eq $false } | where { $_.passwordexpired -eq $false }
+$users = get-aduser -filter {(Enabled -eq "True") -and (PasswordNeverExpires -eq "False") -and (PasswordExpired -eq "False")} -properties Name, PasswordNeverExpires, PasswordExpired, PasswordLastSet, EmailAddress
 $maxPasswordAge = (Get-ADDefaultDomainPasswordPolicy).MaxPasswordAge
 
 # Process Each User for Password Expiry
@@ -49,7 +56,7 @@ foreach ($user in $users)
 	#Set $emailaddress to a user's email address from AD
     $emailaddress = $user.emailaddress
 	#get the date the user reset their password
-    $passwordSetDate = (get-aduser $user -properties * | foreach { $_.PasswordLastSet })
+    $passwordSetDate = (get-aduser $user -properties *).PasswordLastSet
     $PasswordPol = (Get-AduserResultantPasswordPolicy $user)
     # Check for Fine Grained Password
     if (($PasswordPol) -ne $null)
@@ -86,7 +93,7 @@ foreach ($user in $users)
 		Dear $Name,
 		</p>
 		<p>
-		Your Password will expire $messageDaysBold Please follow the instructions below to change your password before it expires.  If you require assistance, please contact our Service Desk at internal only extension 2001 or by dialing (877) 293-6378.
+		Your Password will expire $messageDaysBold Please follow the instructions below to change your password before it expires.  If you require assistance, please contact our Service Desk at internal only extension $ServiceDeskExtension or by dialing $ServiceDeskPhoneNumber.
 		</p>
 		<p>
 		<strong>Remember:</strong>
@@ -125,17 +132,17 @@ foreach ($user in $users)
 
 
 		<p>
-		<strong>USA Compression</strong>
+		<strong>$CompanyName</strong>
 		<br>
-		<strong>Information Technology</strong>
+		<strong>$DepartmentName</strong>
 		</p>
 
 		<p>
 		<strong>DIRECT:</strong>
-		Internal only extension 2001 or (877) 293-6378
+		Internal only extension $ServiceDeskExtension or $ServiceDeskPhoneNumber
 		<br>
 		<strong>EMAIL:</strong>
-		<a href=`"mailto:itsupport@usacompression.com`">itsupport@usacompression.com</a>
+		<a href=`"mailto:$ServiceDeskEmail`">$ServiceDeskEmail</a>
 		</p>
 		"
 
@@ -191,52 +198,3 @@ foreach ($user in $users)
 
 
 # End
-# SIG # Begin signature block
-# MIIIqgYJKoZIhvcNAQcCoIIImzCCCJcCAQExCzAJBgUrDgMCGgUAMGkGCisGAQQB
-# gjcCAQSgWzBZMDQGCisGAQQBgjcCAR4wJgIDAQAABBAfzDtgWUsITrck0sYpfvNR
-# AgEAAgEAAgEAAgEAAgEAMCEwCQYFKw4DAhoFAAQUakSnGH21F+7484YM0ZE7GDKg
-# AbGgggX8MIIF+DCCBOCgAwIBAgITIQAAACdUWBVm5yWc2AAAAAAAJzANBgkqhkiG
-# 9w0BAQUFADBgMRUwEwYKCZImiZPyLGQBGRYFbG9jYWwxHjAcBgoJkiaJk/IsZAEZ
-# Fg5VU0FDb21wcmVzc2lvbjEnMCUGA1UEAxMeVVNBQ29tcHJlc3Npb24tQVVTLURD
-# LUNBLTAxLUNBMB4XDTE1MDUwMzE1MTUxM1oXDTE2MDUwMjE1MTUxM1owdjEVMBMG
-# CgmSJomT8ixkARkWBWxvY2FsMR4wHAYKCZImiZPyLGQBGRYOVVNBQ29tcHJlc3Np
-# b24xITAfBgNVBAMTGE1hbmFnZWQgU2VydmljZSBBY2NvdW50czEaMBgGA1UEAxMR
-# SWFuIEtlbHNvIChBZG1pbikwggEiMA0GCSqGSIb3DQEBAQUAA4IBDwAwggEKAoIB
-# AQC6Q9auqOjvSDTu3JX5fMCMeSlm6gWtMJmrFmCegsGlUsH3gTeCZuab3WDQ3Pwk
-# 1UehngpyrCfSGw/g7rdhxyKjM24x1XozcYG4uKz7e+p67o2uA4dUl9x/Zn1VWjzO
-# 6VB0MHtmf6ALOsYf3hW3/6RRHp//nFTvKBSwTO2TPpSfpE5N8M6m3PhCpR5FsaCp
-# p5Cq7XFuo+KlNZr775O0UWbH3etookcyk8dzkHJYRtrZNnRAKXBDJgMB+WE/GKwT
-# oLsZ/Oj6KasLSinAIN/mkOg2lGikS366tGJsMA58FlT7enZ+nvsaxSNeW16EkLHR
-# r2XJgQXfdhJ/fGOsPKTvRcNXAgMBAAGjggKTMIICjzAlBgkrBgEEAYI3FAIEGB4W
-# AEMAbwBkAGUAUwBpAGcAbgBpAG4AZzATBgNVHSUEDDAKBggrBgEFBQcDAzAOBgNV
-# HQ8BAf8EBAMCB4AwHQYDVR0OBBYEFH+qJ4fD762Wo1IczROFXsRJ/vc3MB8GA1Ud
-# IwQYMBaAFJiUE6Gx2meGHSZBnHyc18Sxge0KMIHqBgNVHR8EgeIwgd8wgdyggdmg
-# gdaGgdNsZGFwOi8vL0NOPVVTQUNvbXByZXNzaW9uLUFVUy1EQy1DQS0wMS1DQSxD
-# Tj1BVVMtREMtQ0EtMDEsQ049Q0RQLENOPVB1YmxpYyUyMEtleSUyMFNlcnZpY2Vz
-# LENOPVNlcnZpY2VzLENOPUNvbmZpZ3VyYXRpb24sREM9VVNBQ29tcHJlc3Npb24s
-# REM9bG9jYWw/Y2VydGlmaWNhdGVSZXZvY2F0aW9uTGlzdD9iYXNlP29iamVjdENs
-# YXNzPWNSTERpc3RyaWJ1dGlvblBvaW50MIHZBggrBgEFBQcBAQSBzDCByTCBxgYI
-# KwYBBQUHMAKGgblsZGFwOi8vL0NOPVVTQUNvbXByZXNzaW9uLUFVUy1EQy1DQS0w
-# MS1DQSxDTj1BSUEsQ049UHVibGljJTIwS2V5JTIwU2VydmljZXMsQ049U2Vydmlj
-# ZXMsQ049Q29uZmlndXJhdGlvbixEQz1VU0FDb21wcmVzc2lvbixEQz1sb2NhbD9j
-# QUNlcnRpZmljYXRlP2Jhc2U/b2JqZWN0Q2xhc3M9Y2VydGlmaWNhdGlvbkF1dGhv
-# cml0eTA4BgNVHREEMTAvoC0GCisGAQQBgjcUAgOgHwwdYS1pa2Vsc29AVVNBQ29t
-# cHJlc3Npb24ubG9jYWwwDQYJKoZIhvcNAQEFBQADggEBAI2irthxT3GG9phRTqbA
-# nDf23TXEZFHrCx24kcr63cj/1kax9pIXRihKNfzhcwzSc+7VpM9afGYzH0rIBuH5
-# H7ny8eBigUN+gYlItXiG0cD/cdMnUNgWIH7vsJjjH8qzbh2TOXYDk2UxWai0NTlL
-# c+rxTYbnto93i0fNDVq7ELrxi0uxIUQqFX2F3YLlY6MxyjL4KFfpAFMaooUijO8c
-# ppTFLyE+gu1s4K2zFdnRaXjIHLuvG9uVFf1Le6+9OU2AWwAKPeJM1KycTTVotejC
-# tfzYUwISE0Zs+v8c5UZBtB/kfYfIHrQFxGG/rzKPYhlswUG6bYxFJPeGZFpsPiOI
-# WwwxggIYMIICFAIBATB3MGAxFTATBgoJkiaJk/IsZAEZFgVsb2NhbDEeMBwGCgmS
-# JomT8ixkARkWDlVTQUNvbXByZXNzaW9uMScwJQYDVQQDEx5VU0FDb21wcmVzc2lv
-# bi1BVVMtREMtQ0EtMDEtQ0ECEyEAAAAnVFgVZuclnNgAAAAAACcwCQYFKw4DAhoF
-# AKB4MBgGCisGAQQBgjcCAQwxCjAIoAKAAKECgAAwGQYJKoZIhvcNAQkDMQwGCisG
-# AQQBgjcCAQQwHAYKKwYBBAGCNwIBCzEOMAwGCisGAQQBgjcCARUwIwYJKoZIhvcN
-# AQkEMRYEFH2zmj+KuptkOTK8PXqzMZL5mXtbMA0GCSqGSIb3DQEBAQUABIIBACzZ
-# F0BPBQoSGVSVgQFKEVrA2KLoKMzhesqR5Dl8+z2GbszFTy2T1f0UF9L1CSBtQfm0
-# ioY/34cY+u/hdzpqGBkDZ3XiVQr2gZND6iOqkDRPWB9KCFMEb3tOoSUqr47CL4BN
-# PtrpyB2gFeXODokFAixGDPgdBME4MXjFNGvu+gq8StlP/O8yIWqQF86Mc/QQeBg7
-# SAhbsIAx9nzf8nW4Hiaz5igP2hELe5FDh2PCWjkferXOzhaOkvOn7CKWsNRUdWwI
-# X+AQPB2s4XncbGEk/nSHerukVBPzUY920XJU8rQjFuBSsKj6etOQBnq5FHoJvgra
-# tXuj2jrCSCrV1r73fBA=
-# SIG # End signature block
